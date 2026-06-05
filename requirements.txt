@@ -1,0 +1,17 @@
+Flask>=2.3
+Flask-Cors>=4.0
+# System dependency: install FFmpeg 4-8 with conda or your OS package manager.
+# Example: conda install -c conda-forge "ffmpeg>=4,<9"
+numpy>=1.24
+torch>=2.0
+torchaudio>=2.0
+pedalboard>=0.9
+PyYAML>=6.0
+tqdm>=4.66
+requests>=2.31
+descript_audiotools @ git+https://github.com/descriptinc/audiotools
+pyloudnorm>=0.1.0
+soundfile>=0.12
+laion-clap>=1.1.4
+# st-ito @ git+https://github.com/csteinmetz1/st-ito.git
+torchcodec

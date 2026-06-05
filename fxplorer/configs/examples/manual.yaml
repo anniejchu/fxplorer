@@ -1,0 +1,54 @@
+experiment_name: "simple_manual_test"
+seed: 1
+
+audio:
+  dry_audio_path: "assets/salsa_piano.wav"
+  normalize_dry: true
+  normalize_output: true 
+  target_lufs: -12
+
+sample_generation:
+  num_samples_per_manual_chain: 1
+  num_samples_per_random_chain: 0
+
+manual_chains:
+  1_bright:
+    chain: ["eq:6"]
+    param_overrides:
+      "eq_6_0":    
+        bands.0.freq_hz: 120
+        bands.0.q: 1
+        bands.0.gain_db: 0
+        bands.1.freq_hz: 400
+        bands.1.q: 1
+        bands.1.gain_db: 0
+        bands.2.freq_hz: 1200
+        bands.2.q: 1
+        bands.2.gain_db: 3
+        bands.3.freq_hz: 4000
+        bands.3.q: 1
+        bands.3.gain_db: 3
+        bands.4.freq_hz: 9000
+        bands.4.q: 1
+        bands.4.gain_db: 10
+        bands.5.freq_hz: 15000
+        bands.5.q: 1
+        bands.5.gain_db: 12
+
+  2_dull:
+    chain: ["eq:6"]
+    param_overrides:
+      "eq_6_0":
+        bands.0.freq_hz: 120
+        bands.0.q: 1
+        bands.0.gain_db: 8
+        bands.1.freq_hz: 250
+        bands.1.q: 1
+        bands.1.gain_db: 4
+        bands.2.gain_db: 0
+        bands.3.gain_db: 0
+        bands.4.gain_db: 0
+        bands.5.gain_db: 0
+
+param_sweeps: {}
+random_chains: {}

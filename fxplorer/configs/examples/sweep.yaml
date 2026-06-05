@@ -1,0 +1,45 @@
+# example fror sweep
+experiment_name: "sweep_examples"
+
+seed: 999
+
+audio:
+  dry_audio_path: "assets/salsa_piano.wav"
+  normalize_dry: true
+  normalize_output: false  # DISABLED for speed (dry is already normalized)
+  target_lufs: -12
+
+sample_generation:
+  num_samples_per_manual_chain: 0
+  num_samples_per_random_chain: 0
+
+# PARAMETER SWEEPS
+
+param_sweeps:
+
+  # Sweep 1: EQ high-shelf brightness
+  eq_brightness:
+    description: "High-shelf gain sweep to test brightness direction"
+    chain_spec: ["eq:6"]
+    fx_mod_to_sweep: "eq:6"
+    param_to_sweep: "bands.5.gain_db"
+    values: [-12, -6, 0, 6, 12]
+
+  # Sweep 2: Compressor ratio
+  compressor_ratio:
+    description: "Increasing compressor ratio results in more squash"
+    chain_spec: ["compressor"]
+    fx_mod_to_sweep: "compressor"
+    param_to_sweep: "ratio"
+    values: [1.2, 2.0, 4.0, 8.0, 12.0]
+
+  # Sweep 3: Distortion drive
+  distortion_drive:
+    description: "Increasing drive adds harmonics and grit"
+    chain_spec: ["distortion"]
+    fx_mod_to_sweep: "distortion"
+    param_to_sweep: "drive_db"
+    values: [0, 6, 12, 18, 24, 30]
+
+manual_chains: {}
+random_chains: {}

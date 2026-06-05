@@ -1,0 +1,19 @@
+Files
+-----
+
+example_in_out/
+  bass_dtmf.wav
+    Dry input recording (23s); bass line excerpt for Baile Inolvidable by Bad Bunny; recorded into Logic Pro X, then exported.  
+
+  input_fxd_boomy.wav
+    Rendered output after using FXplorer, found settings for "boomy", exported FX modules + params in exported_fx-presets-1770770504023.json.
+
+  input_fxd_fuzzy.wav
+    Rendered output after using FXplorer, found settings for "fuzzy", exported FX modules + params in exported_fx-presets-1770770504023.json.
+
+  exported_fx-presets-1770770504023.json
+    FXplorer-exported preset collection containing the "boomy" and "fuzzy" FX parameter settings.
+
+
+salsa_piano.wav
+  Attribution: Salsa Piano 90 BPM by TheLastOneOnEarth -- https://freesound.org/s/698661/ -- License: Attribution 4.0

@@ -1,0 +1,32 @@
+experiment_name: "eq6_default_run"
+
+audio:
+  dry_audio_path: "assets/salsa_piano.wav"
+  normalize_dry: true
+  normalize_output: true 
+  target_lufs: -14
+
+sample_generation:
+  num_samples_per_manual_chain: 0
+  num_samples_per_random_chain: 90
+
+random_chains:
+  eq_only:
+    description: "Single EQ-6 band random variants"
+    chain_complexity: 1
+    allowed_effect_types: ["eq:6"]
+
+param_sweeps:
+  eq_brightness:
+    description: "High-shelf brightness sweep"
+    chain_spec: ["eq:6"]
+    fx_mod_to_sweep: "eq:6"
+    param_to_sweep: "bands.5.gain_db"
+    values: [-9, -3, 0, 3, 9]
+
+  eq_body:
+    description: "Low-shelf body sweep"
+    chain_spec: ["eq:6"]
+    fx_mod_to_sweep: "eq:6"
+    param_to_sweep: "bands.0.gain_db"
+    values: [-6, -2, 0, 2, 6]

@@ -1,0 +1,28 @@
+experiment_name: "simple_random_cloud"
+
+audio:
+  dry_audio_path: "assets/salsa_piano.wav"
+  normalize_dry: true
+  normalize_output: true 
+  target_lufs: -14
+
+sample_generation:
+  num_samples_per_manual_chain: 0
+  num_samples_per_random_chain: 20
+  profile_random_ratio: 0.3  # 30% random, 70% guided by perceptual profiles
+
+random_chains:
+  one_fx:
+    description: "single_fx"
+    chain_complexity: 1
+    allowed_effect_types: ["eq:6", "chorus", "compressor", "distortion", "reverb"]
+
+  two_fx:
+    description: "two_fx"
+    chain_complexity: 2
+    allowed_effect_types: ["eq:6", "compressor", "distortion", "reverb"]
+
+  three_fx:
+    description: "three_fx"
+    chain_complexity: 3
+    allowed_effect_types: ["eq:6", "compressor", "distortion", "reverb"]
