@@ -97,9 +97,9 @@ with inference-time optimization," ISMIR 2024. [arXiv:2410.21233](https://arxiv.
 ## Cite this
 ```bibtex
 @inproceedings{chu2026fxplorer,
-    title={FXplorer: A Map-Based Interface for Exploratory Audio Effect Design}, 
-    author={Annie Chu and Jason Brent Smith and Bryan Pardo},
+    title= {FXplorer: A Map-Based Interface for Exploratory Audio Effect Design}, 
+    author= {Annie Chu and Jason Brent Smith and Bryan Pardo},
     booktitle = {Proceedings of the International Conference on New Interfaces for Musical Expression},
-    year      = {2026},
+    year = {2026},
 }
 ```   
