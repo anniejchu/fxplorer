@@ -1,8 +1,9 @@
-# FXplorer
+<h1 align="center">FXplorer</h1>
 
-Web interface for exploring audio FX variants in a learned 2D embedding space. Given a dry inputs, it generates FX variants, embeds them with LAION-CLAP or AFx-Rep, projects to 2D, and lets users audition, search, interpolate, and edit them live in the browser.
+This repo provides a web interface for exploring sonic variations of an input sound in a learned 2D embedding space. Given a dry input, the system generates N audio FX variants, embeds them using LAION-CLAP or AFx-Rep, projects them to 2D, and lets users audition, search semantically, interpolate between two variants, edit, and export the results live in the browser.
 
-Accepted to **NIME 2026**.
+## FXplorer: A Map-Based Interface for Exploratory Audio Effect Design
+Read the paper [here](https://anniejchu.github.io/fxplorer/)! Accepted to **NIME 2026**.
 
 ## Pipeline Overview
 
@@ -92,3 +93,13 @@ Outputs write to `_outputs/<experiment>_<timestamp>_<id>/`.
 with inference-time optimization," ISMIR 2024. [arXiv:2410.21233](https://arxiv.org/abs/2410.21233)
 - **Pedalboard** — Spotify. [github.com/spotify/pedalboard](https://github.com/spotify/pedalboard)
 - **Tone.js** — Web Audio framework for browser-side FX playback.
+
+## Cite this
+```bibtex
+@inproceedings{chu2026fxplorer,
+    title={FXplorer: A Map-Based Interface for Exploratory Audio Effect Design}, 
+    author={Annie Chu and Jason Brent Smith and Bryan Pardo},
+    booktitle = {Proceedings of the International Conference on New Interfaces for Musical Expression},
+    year      = {2026},
+}
+```   
