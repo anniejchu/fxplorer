@@ -16,25 +16,26 @@
  *
  * CONFIGURATION:
  * API base URL can be set via VITE_API_URL environment variable
- * Default: http://localhost:5000/api
+ * Default: /api (proxied to the local backend by Vite during development)
  */
 
-// Read base from Vite env or fall back to localhost. Normalize for safety:
-const _rawApiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').trim();
+// Use a same-origin path by default so remote browsers do not interpret
+// "localhost" as their own machine. Vite proxies /api to the backend in dev.
+const _rawApiBase = (import.meta.env.VITE_API_URL || '/api').trim();
 import { DEFAULT_MODE, DEFAULT_EMBED_MODES_STR } from './constants.js';
 
 const API_BASE = (() => {
   try {
     let b = _rawApiBase;
-    // If user provided a host without scheme, assume http
-    if (!b.startsWith('http://') && !b.startsWith('https://')) {
+    // Preserve same-origin paths; assume HTTP for a configured hostname.
+    if (!b.startsWith('/') && !b.startsWith('http://') && !b.startsWith('https://')) {
       b = 'http://' + b;
     }
     // remove trailing slash so concatenation is safe
     if (b.endsWith('/')) b = b.slice(0, -1);
     return b;
   } catch (e) {
-    return 'http://localhost:5000/api';
+    return '/api';
   }
 })();
 

@@ -61,15 +61,15 @@ Start the frontend in a second terminal:
 
 ```bash
 cd fxplorer/frontend
-VITE_API_URL=http://127.0.0.1:5000/api npm run dev -- --host 127.0.0.1 --port 5173
+npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-Open `http://127.0.0.1:5173`. The frontend can be started before the backend. It
-shows a waiting page while the backend downloads or loads the CLAP and AFx-Rep
-models (may take a few minutes), retries automatically, and opens the app when the API is ready.
+Open `http://127.0.0.1:5173` when the browser is on the same machine.
 
-The app starts empty after connecting. Use the Upload panel to generate a
-population, or attach the backend to an existing run with `--run_dir <path>`.
+On first run, backend may take a few minutes to set up/download models, app will open when API is ready.
+
+Use the Upload panel to generate a variant
+population (or attach the backend to an existing run with `--run_dir <path>`).
 
 ## Offline Pipeline
 
