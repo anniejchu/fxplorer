@@ -13,6 +13,8 @@
   let dragStartY = 0;
   let dragOffsetX = 0;
   let dragOffsetY = 0;
+  const DRAG_KEY_STEP = 10;
+  const SLIDER_KEY_STEP = 1;
 
   const normalizePluginId = (pluginId = '') => String(pluginId).replace(/_(\d+)$/, '');
   const getFxModules = (point) => {
@@ -76,6 +78,37 @@
   function stopDrag() {
     dragActive = false;
   }
+
+  function handleDragKeyDown(event) {
+    if (event.key === 'Home') {
+      dragOffsetX = 0;
+      dragOffsetY = 0;
+    } else if (event.key === 'ArrowLeft') {
+      dragOffsetX -= DRAG_KEY_STEP;
+    } else if (event.key === 'ArrowRight') {
+      dragOffsetX += DRAG_KEY_STEP;
+    } else if (event.key === 'ArrowUp') {
+      dragOffsetY -= DRAG_KEY_STEP;
+    } else if (event.key === 'ArrowDown') {
+      dragOffsetY += DRAG_KEY_STEP;
+    } else {
+      return;
+    }
+    event.preventDefault();
+  }
+
+  function handleSliderKeyDown(event) {
+    const step = event.shiftKey ? SLIDER_KEY_STEP * 10 : SLIDER_KEY_STEP;
+    let nextPercent = percent;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') nextPercent -= step;
+    else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') nextPercent += step;
+    else if (event.key === 'Home') nextPercent = 0;
+    else if (event.key === 'End') nextPercent = 100;
+    else return;
+
+    event.preventDefault();
+    dispatch('change', { percent: Math.max(0, Math.min(100, nextPercent)) });
+  }
 </script>
 
 <svelte:window
@@ -94,30 +127,39 @@
     class="interpolation-indicator"
     style={`left: calc(50% + ${sidebarWidth / 2}px); transform: translate(-50%, 0) translate(${dragOffsetX}px, ${dragOffsetY}px);`}
   >
-    <div class="indicator-header" on:mousedown={startDrag}>
-      <div class="mode-label">INTERPOLATE MODE</div>
-      <div class="chain-row">
-        <div class="chain-flow">
+    <button
+      type="button"
+      class="indicator-header"
+      on:mousedown={startDrag}
+      on:keydown={handleDragKeyDown}
+      aria-label="Move interpolation panel. Use arrow keys to reposition it; press Home to reset."
+    >
+      <span class="mode-label">INTERPOLATE MODE</span>
+      <span class="chain-row">
+        <span class="chain-flow">
           {#each chainModules as mod, i}
             <span class="flow-node fx-node">{mod}</span>
             {#if i < chainModules.length - 1}
               <span class="flow-arrow">→</span>
             {/if}
           {/each}
-        </div>
-      </div>
-    </div>
+        </span>
+      </span>
+    </button>
     <div class="indicator-bar">
       <span class="index-label left">{leftLabel}</span>
       <div
         class="progress-container"
         bind:this={progressContainer}
         on:mousedown={handleMouseDown}
+        on:keydown={handleSliderKeyDown}
         role="slider"
         tabindex="0"
+        aria-label="Interpolation blend"
         aria-valuenow={percent}
         aria-valuemin="0"
         aria-valuemax="100"
+        aria-valuetext={`${percent}% between ${leftLabel} and ${rightLabel}`}
       >
         <div class="progress-track"></div>
         <div class="progress-fill" style="width: {percent}%"></div>
@@ -160,9 +202,17 @@
   }
 
   .indicator-header {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
+    color: inherit;
+    cursor: move;
+    font: inherit;
+    text-align: left;
     gap: 1rem;
     margin-bottom: 0.75rem;
     cursor: move;

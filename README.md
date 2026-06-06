@@ -1,6 +1,6 @@
 <h1 align="center">FXplorer</h1>
 
-This repo provides a web interface for exploring sonic variations of an input sound in a learned 2D embedding space. Given a dry input, the system generates N audio FX variants, embeds them using LAION-CLAP or AFx-Rep, projects them to 2D, and lets users audition, search semantically, interpolate between two variants, edit, and export the results live in the browser.
+This repo provides a web interface for exploring sonic variations of an input sound in a 2D space. Given a dry input, the system generates N audio FX variants, embeds them using LAION-CLAP or AFx-Rep models, projects them to 2D, and lets users audition, search semantically, interpolate between two variants, edit, and export the results live in the browser.
 
 ## FXplorer: A Map-Based Interface for Exploratory Audio Effect Design
 Read the paper [here](https://anniejchu.github.io/fxplorer/)! Accepted to **NIME 2026**.
@@ -19,58 +19,57 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for implementation details and [USAGE.md]
 
 ## Requirements
 
-- Python 3.10 (via cpython specifically)
-- Node.js 18+
+- Python 3.10 (via cpython)
+- Node.js 18, 20, or 22+ (tested with Node.js 20.19.0)
+- npm 8+ (tested with npm 10.8.2, included with Node.js)
 - FFmpeg 4-8, installed with conda or your system package manager
-- `st-ito` (editable install, required for AFx-Rep embedder)
-- LAION-CLAP (installed via `requirements.txt`)
+- Embedding Models: LAION-CLAP and `st-ito` (installed automatically via `requirements.txt`)
 
 ## Setup
 
 ```bash
 git clone https://github.com/anniejchu/fxplorer.git
 cd fxplorer
-conda create -y -n fxplorer -c conda-forge "python=3.10.*=*_cpython" pip
+conda create -y -n fxplorer -c conda-forge "python=3.10.*=*_cpython" pip "ffmpeg>=4,<9"
 conda activate fxplorer
 python -c "import platform; assert platform.python_implementation() == 'CPython'"
-conda install -c conda-forge "ffmpeg>=4,<9"
-python -m pip install -r requirements.txt
+python -m pip install --src "$CONDA_PREFIX/src" -r requirements.txt
 python -m pip install -e .
-```
-
-Install `st-ito` from source in a sibling directory:
-
-```bash
-cd ..
-git clone https://github.com/csteinmetz1/st-ito.git
-cd st-ito && python -m pip install -e .
-cd ../fxplorer
 ```
 
 Install the frontend:
 
 ```bash
-cd frontend && npm install && cd ..
+cd frontend
+npm ci
+cd ..
 ```
 
 Model weights download into `pretrained/` on first use.
 
 ## Quick Start
 
-Start the backend:
+Start the backend in one terminal:
 
 ```bash
-python -m backend 
+conda activate fxplorer
+cd fxplorer
+python -m backend
 ```
 
 Start the frontend in a second terminal:
 
 ```bash
-cd frontend
+cd fxplorer/frontend
 VITE_API_URL=http://127.0.0.1:5000/api npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-Open `http://127.0.0.1:5173`. The app starts empty — use the Upload panel to generate a population, or attach to an existing run with `--run_dir <path>`.
+Open `http://127.0.0.1:5173`. The frontend can be started before the backend. It
+shows a waiting page while the backend downloads or loads the CLAP and AFx-Rep
+models (may take a few minutes), retries automatically, and opens the app when the API is ready.
+
+The app starts empty after connecting. Use the Upload panel to generate a
+population, or attach the backend to an existing run with `--run_dir <path>`.
 
 ## Offline Pipeline
 
@@ -102,4 +101,4 @@ with inference-time optimization," ISMIR 2024. [arXiv:2410.21233](https://arxiv.
     booktitle = {Proceedings of the International Conference on New Interfaces for Musical Expression},
     year = {2026},
 }
-```   
+```

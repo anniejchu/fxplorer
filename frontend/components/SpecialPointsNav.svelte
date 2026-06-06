@@ -10,16 +10,19 @@
 {#if specialPoints.length > 0}
   <div class="special-points-nav" class:expanded={showSpecialPointsNav}>
     <button
+      type="button"
       class="nav-toggle"
       on:click={onToggle}
       title="Navigate special points (interpolated/renamed)"
+      aria-expanded={showSpecialPointsNav}
+      aria-label={`${showSpecialPointsNav ? 'Hide' : 'Show'} navigation for ${specialPoints.length} special points`}
     >
       $ {specialPoints.length}
     </button>
 
     {#if showSpecialPointsNav}
       <div class="nav-controls">
-        <button class="nav-btn" on:click={onPrev} title="Previous">
+        <button type="button" class="nav-btn" on:click={onPrev} title="Previous" aria-label="Previous special point">
           ◀
         </button>
         <div class="nav-info">
@@ -28,7 +31,7 @@
             {specialPoints[specialPointsIndex]?.customName || specialPoints[specialPointsIndex]?.name || 'Unnamed'}
           </span>
         </div>
-        <button class="nav-btn" on:click={onNext} title="Next">
+        <button type="button" class="nav-btn" on:click={onNext} title="Next" aria-label="Next special point">
           ▶
         </button>
       </div>

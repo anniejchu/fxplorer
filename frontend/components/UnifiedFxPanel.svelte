@@ -581,6 +581,12 @@
     );
   }
 
+  function getControlId(pluginName, path) {
+    const safePlugin = String(pluginName).replace(/[^a-zA-Z0-9_-]/g, '-');
+    const safePath = path.map((part) => String(part).replace(/[^a-zA-Z0-9_-]/g, '-')).join('-');
+    return `fx-${safePlugin}-${safePath}`;
+  }
+
   $: plugins = params ? Object.entries(params) : [];
   $: stateColor = displayState === 'interpolation' ? 'var(--accent-3)'
     : displayState === 'selected' ? 'var(--success)'
@@ -595,7 +601,12 @@
       <span class="panel-title">FX Panel</span>
     </div>
     <div class="header-right">
-      <button class="bypass-toggle" on:click={handleBypassToggle}>
+      <button
+        type="button"
+        class="bypass-toggle"
+        on:click={handleBypassToggle}
+        aria-pressed={fxBypass}
+      >
         {fxBypass ? 'FX Off' : 'FX On'}
       </button>
       {#if displayState === 'interpolation'}
@@ -797,8 +808,9 @@
                   <div class="band-row">
                     <p class="band-label">Band {idx + 1}</p>
                     <div class="control-row">
-                      <label>Freq</label>
+                      <label for={getControlId(pluginName, ['bands', idx, 'freq_hz'])}>Freq</label>
                       <input
+                        id={getControlId(pluginName, ['bands', idx, 'freq_hz'])}
                         type="range"
                         min={getFxParamBounds('eq', 'freq_hz').min}
                         max={getFxParamBounds('eq', 'freq_hz').max}
@@ -810,8 +822,9 @@
                       <span>{formatParamValue(band.freq_hz)} Hz</span>
                     </div>
                     <div class="control-row">
-                      <label>Gain</label>
+                      <label for={getControlId(pluginName, ['bands', idx, 'gain_db'])}>Gain</label>
                       <input
+                        id={getControlId(pluginName, ['bands', idx, 'gain_db'])}
                         type="range"
                         min={getFxParamBounds('eq', 'gain_db').min}
                         max={getFxParamBounds('eq', 'gain_db').max}
@@ -823,8 +836,9 @@
                       <span>{formatParamValue(band.gain_db)} dB</span>
                     </div>
                     <div class="control-row">
-                      <label>Q</label>
+                      <label for={getControlId(pluginName, ['bands', idx, 'q'])}>Q</label>
                       <input
+                        id={getControlId(pluginName, ['bands', idx, 'q'])}
                         type="range"
                         min={getFxParamBounds('eq', 'q').min}
                         max={getFxParamBounds('eq', 'q').max}
@@ -843,10 +857,11 @@
                     {@const bounds = getFxParamBounds(kind, key)}
                     {@const isKnob = ['mix', 'depth', 'wet_level', 'dry_level', 'width', 'feedback', 'drive_db', 'room_size', 'damping'].includes(key)}
                     <div class={`control-row ${isKnob ? 'knob' : 'slider'}`}>
-                      <label>{formatLabel(key)}</label>
+                      <label for={getControlId(pluginName, [key])}>{formatLabel(key)}</label>
                       {#if isKnob}
                         <div class="knob-visual" class:readonly={readonly}>
                           <input
+                            id={getControlId(pluginName, [key])}
                             type="range"
                             min={bounds.min}
                             max={bounds.max}
@@ -861,6 +876,7 @@
                         <span>{formatParamValue(value)}</span>
                       {:else}
                         <input
+                          id={getControlId(pluginName, [key])}
                           type="range"
                           min={bounds.min}
                           max={bounds.max}
@@ -890,6 +906,7 @@
                   <span class="param-key">{param.path.join(' › ')}</span>
                   <input
                     type="number"
+                    aria-label={`${getFxLabel(param.pluginName)} ${param.path.join(' ')}`}
                     min={bounds.min}
                     max={bounds.max}
                     step={bounds.step}

@@ -13,5 +13,7 @@ descript_audiotools @ git+https://github.com/descriptinc/audiotools
 pyloudnorm>=0.1.0
 soundfile>=0.12
 laion-clap>=1.1.4
-# st-ito @ git+https://github.com/csteinmetz1/st-ito.git
+# AFx-Rep model loader. Editable is required because upstream's wheel omits
+# namespace-package model modules; pip manages the checkout inside the environment.
+-e git+https://github.com/csteinmetz1/st-ito.git@c34463a4bc94dcafe793c634cd9972768f0234dd#egg=st-ito
 torchcodec

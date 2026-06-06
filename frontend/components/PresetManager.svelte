@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, tick } from 'svelte';
   import { presetStore } from '../lib/presetStore.js';
 
   export let currentParams = null;
@@ -13,6 +13,9 @@
   let presetName = '';
   let saveError = '';
   let lastRefreshToken = refreshToken;
+  let saveTrigger = null;
+  let dialogEl = null;
+  let presetNameInput = null;
 
   function refreshPresets() {
     presets = presetStore.getAllPresets();
@@ -23,16 +26,22 @@
     refreshPresets();
   }
 
-  function openSaveDialog() {
+  async function openSaveDialog(event) {
+    saveTrigger = event?.currentTarget || document.activeElement;
     showSaveDialog = true;
     presetName = '';
     saveError = '';
+    await tick();
+    presetNameInput?.focus();
   }
 
-  function closeSaveDialog() {
+  async function closeSaveDialog() {
+    const trigger = saveTrigger;
     showSaveDialog = false;
     presetName = '';
     saveError = '';
+    await tick();
+    trigger?.focus();
   }
 
   function handleSave() {
@@ -46,10 +55,11 @@
     }
 
     try {
-      presetStore.savePreset(presetName.trim(), currentParams);
+      const savedName = presetName.trim();
+      presetStore.savePreset(savedName, currentParams);
       refreshPresets();
       closeSaveDialog();
-      dispatch('presetSaved', { name: presetName });
+      dispatch('presetSaved', { name: savedName });
     } catch (err) {
       saveError = err.message || 'Failed to save preset';
     }
@@ -93,6 +103,30 @@
     };
     reader.readAsText(file);
   }
+
+  function handleDialogKeyDown(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeSaveDialog();
+      return;
+    }
+    if (event.key !== 'Tab' || !dialogEl) return;
+
+    const focusable = Array.from(
+      dialogEl.querySelectorAll('button:not([disabled]), input:not([disabled])')
+    );
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 </script>
 
 <section class="preset-manager">
@@ -112,10 +146,22 @@
             <span class="preset-date">{new Date(preset.createdAt).toLocaleDateString()}</span>
           </div>
           <div class="preset-actions">
-            <button class="load-btn" on:click={() => handleLoad(preset)} title="Load preset">
+            <button
+              type="button"
+              class="load-btn"
+              on:click={() => handleLoad(preset)}
+              title="Load preset"
+              aria-label={`Load preset ${preset.name}`}
+            >
               ▶️
             </button>
-            <button class="delete-btn" on:click={() => handleDelete(preset.id)} title="Delete">
+            <button
+              type="button"
+              class="delete-btn"
+              on:click={() => handleDelete(preset.id)}
+              title="Delete"
+              aria-label={`Delete preset ${preset.name}`}
+            >
               🗑️
             </button>
           </div>
@@ -138,18 +184,36 @@
 </section>
 
 {#if showSaveDialog}
-  <div class="modal-overlay" on:click={closeSaveDialog}>
-    <div class="modal-content" on:click|stopPropagation>
-      <h3>Save Preset</h3>
+  <div class="modal-overlay">
+    <button
+      type="button"
+      class="modal-backdrop"
+      on:click={closeSaveDialog}
+      aria-label="Close save preset dialog"
+      tabindex="-1"
+    ></button>
+    <div
+      class="modal-content"
+      bind:this={dialogEl}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="save-preset-title"
+      tabindex="-1"
+      on:keydown={handleDialogKeyDown}
+    >
+      <h3 id="save-preset-title">Save Preset</h3>
+      <label for="preset-name">Preset name</label>
       <input
+        id="preset-name"
+        bind:this={presetNameInput}
         type="text"
         placeholder="Preset name (e.g., Warm Reverb)"
         bind:value={presetName}
         on:keydown={(e) => e.key === 'Enter' && handleSave()}
-        autofocus
+        aria-describedby={saveError ? 'preset-save-error' : undefined}
       />
       {#if saveError}
-        <p class="error">{saveError}</p>
+        <p class="error" id="preset-save-error" role="alert">{saveError}</p>
       {/if}
       <div class="modal-actions">
         <button class="primary" on:click={handleSave}>Save</button>
@@ -300,14 +364,26 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
   }
 
+  .modal-backdrop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: rgba(0, 0, 0, 0.7);
+    cursor: default;
+  }
+
   .modal-content {
+    position: relative;
+    z-index: 1;
     background: #1a1a1a;
     border: 1px solid #333;
     border-radius: 12px;
@@ -320,6 +396,14 @@
     margin: 0 0 1rem 0;
     font-size: 1.1rem;
     color: #e5e7eb;
+  }
+
+  .modal-content label {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: #cbd5e1;
+    font-size: 0.8rem;
+    font-weight: 600;
   }
 
   .modal-content input {

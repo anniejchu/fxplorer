@@ -54,6 +54,15 @@
 
   const SIDEBAR_MIN = 280;
   const SIDEBAR_MAX = 520;
+  const SIDEBAR_KEY_STEP = 12;
+  const BACKEND_REQUEST_TIMEOUT = 2500;
+  const BACKEND_RETRY_DELAY = 3000;
+  const BACKEND_WAIT_NOTES = [
+    'Starting the FXplorer backend...',
+    'Loading the CLAP and AFx-Rep audio models...',
+    'On the first run, model weights may be downloading to the pretrained folder.',
+    'Model initialization can take several minutes, especially without GPU acceleration.'
+  ];
   let sidebarWidth = 360;
   let sidebarDragging = false;
   let sidebarEl = null;
@@ -64,6 +73,16 @@
   let samples = [];          // Array of sample metadata from manifest.json
   let coords = [];           // 2D coordinates for visualization
   let isInitializing = true; // Initial loading state
+  let backendConnectionState = 'connecting';
+  let connectionAttempts = 0;
+  let waitingSeconds = 0;
+  let connectionError = false;
+  let readinessStartedAt = Date.now();
+  let readinessAttemptId = 0;
+  let readinessAbortController = null;
+  let readinessRetryTimer = null;
+  let readinessElapsedTimer = null;
+  let stopPlayheadTicker = null;
   let loading = false;       // Data fetch state (keeps UI mounted)
   let error = null;          // Global error message
   let hasPopulation = false; // Whether we have any samples to display
@@ -204,6 +223,10 @@
     : null;
 
   $: fxRackReadonly = fxRackState === 'hover' || fxRackState === 'interpolation';
+  $: waitingNote = BACKEND_WAIT_NOTES[Math.floor(waitingSeconds / 8) % BACKEND_WAIT_NOTES.length];
+  $: waitingTimeLabel = waitingSeconds < 60
+    ? `${waitingSeconds}s`
+    : `${Math.floor(waitingSeconds / 60)}m ${waitingSeconds % 60}s`;
 
   // Special points: samples that are interpolated or have custom names
   $: specialPoints = samples.filter(s =>
@@ -232,30 +255,67 @@
   }
 
   onMount(() => {
-    // Kick off initial data fetch + Tone polling once the component mounts.
-    let stopTicker = null;
-    (async () => {
-      try {
-        await initialize();
-        stopTicker = startPlayheadTicker();
-      } catch (err) {
-        error = err.message;
-        console.error('Initialization error:', err);
-      }
-    })();
+    readinessStartedAt = Date.now();
+    readinessElapsedTimer = setInterval(() => {
+      waitingSeconds = Math.floor((Date.now() - readinessStartedAt) / 1000);
+    }, 1000);
+    connectToBackend();
 
     return () => {
-      if (stopTicker) stopTicker();
+      readinessAttemptId += 1;
+      readinessAbortController?.abort();
+      clearTimeout(readinessRetryTimer);
+      clearInterval(readinessElapsedTimer);
+      stopPlayheadTicker?.();
     };
   });
 
-  async function initialize() {
-    isInitializing = true;
-    
-    // Get available modes for embedding spaces (CLAP vs AFX-REP)
-    const modesData = await api.getModes();
-    availableModes = modesData.modes;
-    currentMode = modesData?.default || DEFAULT_MODE;
+  function scheduleBackendRetry() {
+    clearTimeout(readinessRetryTimer);
+    readinessRetryTimer = setTimeout(connectToBackend, BACKEND_RETRY_DELAY);
+  }
+
+  async function connectToBackend() {
+    const attemptId = ++readinessAttemptId;
+    clearTimeout(readinessRetryTimer);
+    readinessAbortController?.abort();
+    readinessAbortController = new AbortController();
+    backendConnectionState = 'connecting';
+    connectionError = false;
+    connectionAttempts += 1;
+
+    try {
+      const health = await api.getHealth({
+        timeoutMs: BACKEND_REQUEST_TIMEOUT,
+        signal: readinessAbortController.signal
+      });
+      if (attemptId !== readinessAttemptId) return;
+
+      backendConnectionState = 'initializing';
+      initialize(health);
+      if (attemptId !== readinessAttemptId) return;
+
+      isInitializing = false;
+      backendConnectionState = 'ready';
+      clearInterval(readinessElapsedTimer);
+      if (!stopPlayheadTicker) {
+        stopPlayheadTicker = startPlayheadTicker();
+      }
+    } catch (err) {
+      if (attemptId !== readinessAttemptId || readinessAbortController.signal.aborted) return;
+      connectionError = true;
+      backendConnectionState = 'waiting';
+      scheduleBackendRetry();
+    }
+  }
+
+  function retryBackendConnection() {
+    connectToBackend();
+  }
+
+  function initialize(health) {
+    availableModes = health?.available_modes || [];
+    currentMode = health?.default_mode || DEFAULT_MODE;
 
     // Initialize audio player in background. Tone.start() may require a user gesture
     // in some browsers; do not block the UI on it. Audio will be enabled on first
@@ -266,7 +326,6 @@
       console.warn('Audio initialization deferred (awaiting user gesture):', err);
     });
 
-    isInitializing = false;
   }
 
   function startPlayheadTicker() {
@@ -1616,6 +1675,18 @@
     const nextWidth = Math.max(SIDEBAR_MIN, Math.min(event.clientX - rect.left, SIDEBAR_MAX));
     sidebarWidth = nextWidth;
   }
+
+  function handleSidebarResizeKey(event) {
+    let nextWidth = sidebarWidth;
+    if (event.key === 'ArrowLeft') nextWidth -= SIDEBAR_KEY_STEP;
+    else if (event.key === 'ArrowRight') nextWidth += SIDEBAR_KEY_STEP;
+    else if (event.key === 'Home') nextWidth = SIDEBAR_MIN;
+    else if (event.key === 'End') nextWidth = SIDEBAR_MAX;
+    else return;
+
+    event.preventDefault();
+    sidebarWidth = Math.max(SIDEBAR_MIN, Math.min(nextWidth, SIDEBAR_MAX));
+  }
 </script>
 
 <svelte:window
@@ -1647,9 +1718,9 @@
 
 <main class="app">
   {#if error}
-    <div class="error-banner">
+    <div class="error-banner" role="alert">
       <span>⚠️ {error}</span>
-      <button on:click={() => error = null}>×</button>
+      <button type="button" on:click={() => error = null} aria-label="Dismiss error">×</button>
     </div>
   {/if}
 
@@ -1660,10 +1731,37 @@
   {/if}
 
   {#if isInitializing}
-    <div class="loading-screen">
-      <div class="spinner"></div>
-      <p>Loading FXplorer...</p>
-    </div>
+    <section class="loading-screen" aria-labelledby="backend-wait-title">
+      <div class="waiting-card">
+        <div class="spinner" aria-hidden="true"></div>
+        <p class="waiting-eyebrow">FXplorer</p>
+        <h1 id="backend-wait-title">
+          {backendConnectionState === 'initializing' ? 'Backend connected' : 'Waiting for the backend'}
+        </h1>
+        <p class="waiting-note" role="status" aria-live="polite" aria-atomic="true">
+          {backendConnectionState === 'initializing' ? 'Preparing the interface...' : waitingNote}
+        </p>
+        <p class="waiting-context">
+          The frontend is ready. The Python backend loads the audio models before it begins accepting requests.
+        </p>
+        <p class="waiting-meta">
+          Attempt {connectionAttempts} · Waiting {waitingTimeLabel}
+        </p>
+        {#if connectionError}
+          <p class="waiting-retry-note">The API is not responding yet. FXplorer will keep retrying automatically.</p>
+        {/if}
+        {#if waitingSeconds >= 30}
+          <div class="waiting-help">
+            <p>Still waiting? From the project directory, start:</p>
+            <code>python -m backend</code>
+            <p>Expected API: <code>{api.getBaseUrl()}</code></p>
+          </div>
+        {/if}
+        <button type="button" class="retry-button" on:click={retryBackendConnection}>
+          Retry now
+        </button>
+      </div>
+    </section>
   {:else}
     <div class="layout">
       <aside class="sidebar" bind:this={sidebarEl} style={`width: ${sidebarWidth}px;`}>
@@ -1695,7 +1793,18 @@
           on:interpolationSave={handleInterpolationSave}
           on:fxBypassChange={(event) => toggleFxBypass(event.detail?.enabled)}
         />
-        <div class="sidebar-resizer" on:mousedown={startSidebarResize} role="separator" aria-orientation="vertical"></div>
+        <div
+          class="sidebar-resizer"
+          on:mousedown={startSidebarResize}
+          on:keydown={handleSidebarResizeKey}
+          role="slider"
+          tabindex="0"
+          aria-label="Resize sidebar"
+          aria-orientation="horizontal"
+          aria-valuemin={SIDEBAR_MIN}
+          aria-valuemax={SIDEBAR_MAX}
+          aria-valuenow={Math.round(sidebarWidth)}
+        ></div>
       </aside>
 
       <!-- Main Visualization Area -->
@@ -1820,14 +1929,21 @@
                       <div class="file-info">
                         <span class="file-name">{audioSearchFile.name}</span>
                         <button
+                          type="button"
                           class="audio-preview-btn"
                           on:click={toggleAudioPreview}
                           title={audioPreviewPlaying ? 'Pause' : 'Play'}
+                          aria-label={`${audioPreviewPlaying ? 'Pause' : 'Play'} ${audioSearchFile.name}`}
                         >
                           {audioPreviewPlaying ? '⏸' : '▶️'}
                         </button>
                       </div>
-                      <button class="ghost file-clear" on:click={clearAudioSearch}>×</button>
+                      <button
+                        type="button"
+                        class="ghost file-clear"
+                        on:click={clearAudioSearch}
+                        aria-label="Clear selected audio search file"
+                      >×</button>
                     </div>
                   {:else}
                     <label class="file-upload-zone" class:disabled={!hasPopulation}>
@@ -2031,11 +2147,104 @@
 
   .loading-screen {
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100vh;
-    gap: 1rem;
+    padding: 1.5rem;
+    background:
+      radial-gradient(circle at 50% 35%, rgba(199, 139, 90, 0.12), transparent 38%),
+      var(--bg);
+  }
+
+  .waiting-card {
+    width: min(560px, 100%);
+    padding: 2rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    background: rgba(36, 28, 21, 0.94);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+    text-align: center;
+  }
+
+  .waiting-eyebrow {
+    margin: 1rem 0 0.35rem;
+    color: var(--accent-3);
+    font-family: 'Fira Code', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .waiting-card h1 {
+    margin: 0;
+    color: var(--text-strong);
+    font-size: 1.35rem;
+  }
+
+  .waiting-note {
+    min-height: 1.5rem;
+    margin: 1rem 0 0;
+    color: var(--text-strong);
+    font-weight: 600;
+  }
+
+  .waiting-context,
+  .waiting-retry-note,
+  .waiting-meta,
+  .waiting-help {
+    color: var(--muted);
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .waiting-context {
+    max-width: 46ch;
+    margin: 0.65rem auto;
+  }
+
+  .waiting-meta {
+    margin: 0.75rem 0 0;
+    color: var(--muted-2);
+    font-family: 'Fira Code', monospace;
+    font-size: 0.75rem;
+  }
+
+  .waiting-retry-note {
+    margin: 0.75rem 0 0;
+  }
+
+  .waiting-help {
+    margin: 1rem 0 0;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel-deep);
+    text-align: left;
+  }
+
+  .waiting-help p {
+    margin: 0.2rem 0;
+  }
+
+  .waiting-help code {
+    color: var(--accent-3);
+  }
+
+  .retry-button {
+    margin-top: 1.25rem;
+    padding: 0.65rem 1rem;
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    background: rgba(199, 139, 90, 0.15);
+    color: var(--text-strong);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+  }
+
+  .retry-button:hover {
+    background: rgba(199, 139, 90, 0.25);
   }
 
   .spinner {
@@ -2045,6 +2254,7 @@
     border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 1s linear infinite;
+    margin: 0 auto;
   }
 
   @keyframes spin {
@@ -2078,11 +2288,15 @@
     right: -3px;
     width: 6px;
     height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
     cursor: col-resize;
     background: transparent;
   }
 
-  .sidebar-resizer:hover {
+  .sidebar-resizer:hover,
+  .sidebar-resizer:focus-visible {
     background: rgba(199, 139, 90, 0.15);
   }
 

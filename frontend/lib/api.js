@@ -39,17 +39,46 @@ const API_BASE = (() => {
 })();
 
 class APIService {
+  getBaseUrl() {
+    return API_BASE;
+  }
+
   // Generic request wrapper with error handling
   async request(endpoint, options = {}) {
     // Ensure endpoint is joined correctly to the normalized base
     const url = endpoint.startsWith('/') ? `${API_BASE}${endpoint}` : `${API_BASE}/${endpoint}`;
+    const {
+      timeoutMs = 0,
+      suppressErrorLog = false,
+      signal: externalSignal,
+      ...fetchOptions
+    } = options;
+    const controller = timeoutMs > 0 || externalSignal ? new AbortController() : null;
+    let timeoutId = null;
+
+    const abortFromExternalSignal = () => {
+      controller?.abort(externalSignal?.reason);
+    };
+
+    if (externalSignal) {
+      if (externalSignal.aborted) {
+        abortFromExternalSignal();
+      } else {
+        externalSignal.addEventListener('abort', abortFromExternalSignal, { once: true });
+      }
+    }
+
+    if (controller && timeoutMs > 0) {
+      timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    }
 
     try {
       const response = await fetch(url, {
-        ...options,
+        ...fetchOptions,
+        signal: controller?.signal,
         headers: {
           'Content-Type': 'application/json',
-          ...options.headers,
+          ...fetchOptions.headers,
         },
       });
 
@@ -60,15 +89,20 @@ class APIService {
 
       return await response.json();
     } catch (err) {
-      console.error(`API Error (${endpoint}):`, err);
+      if (!suppressErrorLog) {
+        console.error(`API Error (${endpoint}):`, err);
+      }
       throw err;
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+      externalSignal?.removeEventListener('abort', abortFromExternalSignal);
     }
   }
 
   // Server status
 
-  async getHealth() {
-    return this.request('/health');
+  async getHealth(options = {}) {
+    return this.request('/health', { ...options, suppressErrorLog: true });
   }
 
   // Embedding modes

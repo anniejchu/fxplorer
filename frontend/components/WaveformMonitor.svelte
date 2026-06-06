@@ -5,6 +5,7 @@ export let state = { mode: 'idle', position: 0, duration: 0, label: '', hoverMod
 
   const viewWidth = 120;
   const viewHeight = 56;
+  const DRAG_KEY_STEP = 10;
 
   $: progress =
     state.duration > 0 ? ((state.position % state.duration) / state.duration) : 0;
@@ -76,6 +77,24 @@ export let state = { mode: 'idle', position: 0, duration: 0, label: '', hoverMod
   function stopDrag() {
     dragActive = false;
   }
+
+  function handleDragKeyDown(event) {
+    if (event.key === 'Home') {
+      dragOffsetX = 0;
+      dragOffsetY = 0;
+    } else if (event.key === 'ArrowLeft') {
+      dragOffsetX -= DRAG_KEY_STEP;
+    } else if (event.key === 'ArrowRight') {
+      dragOffsetX += DRAG_KEY_STEP;
+    } else if (event.key === 'ArrowUp') {
+      dragOffsetY -= DRAG_KEY_STEP;
+    } else if (event.key === 'ArrowDown') {
+      dragOffsetY += DRAG_KEY_STEP;
+    } else {
+      return;
+    }
+    event.preventDefault();
+  }
 </script>
 
 <svelte:window
@@ -87,15 +106,21 @@ export let state = { mode: 'idle', position: 0, duration: 0, label: '', hoverMod
   class="waveform-monitor"
   style={`transform: translate(-50%, 0) translate(${dragOffsetX}px, ${dragOffsetY}px);`}
 >
-  <div class="header" on:mousedown={startDrag}>
-    <div class="title">
+  <button
+    type="button"
+    class="header"
+    on:mousedown={startDrag}
+    on:keydown={handleDragKeyDown}
+    aria-label="Move playback map. Use arrow keys to reposition it; press Home to reset."
+  >
+    <span class="title">
       <span class="dot {state.mode}"></span>
       <span>Playback map</span>
-    </div>
-    <div class="time">
+    </span>
+    <span class="time">
       {formatTime(state.position)} / {formatTime(state.duration)}
-    </div>
-  </div>
+    </span>
+  </button>
 
   <div class="label-row">
     <div class="mode-pill {state.mode}">{modeLabel}</div>
@@ -161,13 +186,19 @@ export let state = { mode: 'idle', position: 0, duration: 0, label: '', hoverMod
   }
 
   .header {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    font: inherit;
     font-size: 0.9rem;
     color: #9ca3af;
     cursor: move;
     user-select: none;
+    text-align: left;
   }
 
   .title {
